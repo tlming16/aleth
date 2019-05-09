@@ -544,6 +544,19 @@ shared_ptr<NodeEntry> NodeTable::handlePong(
             isPublicAddress(pong.destination.address()))
             m_hostNodeEndpoint.setAddress(pong.destination.address());
         m_hostNodeEndpoint.setUdpPort(pong.destination.udpPort());
+
+        if (m_hostENRInfo.ip != m_hostNodeEndpoint.address() ||
+            m_hostENRInfo.udpPort != pong.destination.udpPort())
+        {
+            {
+                Guard l(m_hostENRMutex);
+                m_hostENR =
+                    IdentitySchemeV4::updateENR(m_hostENR, m_secret, m_hostNodeEndpoint.address(),
+                        m_hostNodeEndpoint.tcpPort(), pong.destination.udpPort());
+                m_hostENRInfo = IdentitySchemeV4::info(m_hostENR);
+            }
+            clog(VerbosityInfo, "net") << "ENR updated: " << m_hostENR;
+        }
     }
 
     return sourceNodeEntry;
