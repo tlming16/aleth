@@ -286,6 +286,7 @@ void BlockChainSync::continueSync()
 
 void BlockChainSync::requestBlocks(NodeID const& _peerID)
 {
+    RecursiveGuard l(x_sync);
     clearPeerDownload(_peerID);
     if (host().bq().knownFull())
     {
