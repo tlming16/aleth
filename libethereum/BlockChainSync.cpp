@@ -259,6 +259,8 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
 
         // start sync
         m_syncingTotalDifficulty = peerTotalDifficulty;
+
+        RecursiveGuard l(x_sync);
         if (m_state == SyncState::Idle || m_state == SyncState::NotSynced)
         {
             LOG(m_loggerInfo) << "Starting full sync";
@@ -269,6 +271,7 @@ void BlockChainSync::syncPeer(NodeID const& _peerID, bool _force)
         return;
     }
 
+    RecursiveGuard l(x_sync);
     if (m_state == SyncState::Blocks)
     {
         requestBlocks(_peerID);
@@ -287,14 +290,19 @@ void BlockChainSync::continueSync()
 void BlockChainSync::requestBlocks(NodeID const& _peerID)
 {
     clearPeerDownload(_peerID);
-    if (host().bq().knownFull())
+
     {
-        LOG(m_loggerDetail)
-            << "Waiting for block queue before downloading blocks. Block queue status: "
-            << host().bq().status();
-        pauseSync();
-        return;
+        RecursiveGuard l(x_sync);
+        if (host().bq().knownFull())
+        {
+            LOG(m_loggerDetail)
+                << "Waiting for block queue before downloading blocks. Block queue status: "
+                << host().bq().status();
+            pauseSync();
+            return;
+        }
     }
+
     // check to see if we need to download any block bodies first
     auto header = m_headers.begin();
     h256s neededBodies;
